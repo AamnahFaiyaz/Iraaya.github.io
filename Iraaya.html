@@ -1,0 +1,96 @@
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import Header from "@/components/Header";
+import Hero from "@/components/Hero";
+import ProductGallery, { Product } from "@/components/ProductGallery";
+import CartModal, { CartItem } from "@/components/CartModal";
+import Footer from "@/components/Footer";
+
+const Index = () => {
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const { toast } = useToast();
+
+  // Load cart from localStorage on component mount
+  useEffect(() => {
+    const savedCart = localStorage.getItem('iraaya-cart');
+    if (savedCart) {
+      try {
+        setCartItems(JSON.parse(savedCart));
+      } catch (error) {
+        console.error('Error loading cart from localStorage:', error);
+      }
+    }
+  }, []);
+
+  // Save cart to localStorage whenever cartItems changes
+  useEffect(() => {
+    localStorage.setItem('iraaya-cart', JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  const addToCart = (product: Product) => {
+    setCartItems(prevItems => {
+      const existingItem = prevItems.find(item => item.id === product.id);
+      
+      if (existingItem) {
+        return prevItems.map(item =>
+          item.id === product.id 
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        return [...prevItems, { ...product, quantity: 1 }];
+      }
+    });
+
+    toast({
+      title: "Added to cart",
+      description: `${product.name} has been added to your cart.`,
+    });
+  };
+
+  const updateQuantity = (productId: string, quantity: number) => {
+    setCartItems(prevItems =>
+      prevItems.map(item =>
+        item.id === productId ? { ...item, quantity } : item
+      )
+    );
+  };
+
+  const removeItem = (productId: string) => {
+    setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
+    
+    toast({
+      title: "Item removed",
+      description: "Item has been removed from your cart.",
+    });
+  };
+
+  const cartItemsCount = cartItems.reduce((total, item) => total + item.quantity, 0);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header 
+        cartItemsCount={cartItemsCount} 
+        onCartOpen={() => setIsCartOpen(true)} 
+      />
+      
+      <main>
+        <Hero />
+        <ProductGallery onAddToCart={addToCart} />
+      </main>
+      
+      <Footer />
+      
+      <CartModal
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cartItems={cartItems}
+        onUpdateQuantity={updateQuantity}
+        onRemoveItem={removeItem}
+      />
+    </div>
+  );
+};
+
+export default Index;
